@@ -1,0 +1,28 @@
+-- ====================================================================
+-- PROJECT: FX Operational Intelligence Dashboard
+-- PURPOSE: Enterprise DAX Measures for Performance & Liquidity Tracking
+-- AUTHOR: Bandini Raghav
+-- ====================================================================
+
+-- Metric 1: Dynamically calculates total gross margin from spreads and fees
+Total Revenue GBP = 
+SUMX(
+    'Fact_Transactions',
+    ('Fact_Transactions'[Amount_GBP] * 'Fact_Transactions'[FX_Margin_Percentage]) 
+    + 'Fact_Transactions'[Fee_Charged_GBP]
+)
+
+-- Metric 2: Operational Liquidity Buffer Health Indicator
+Liquidity Alert Indicator = 
+VAR CurrentCashReserve = SUM('Dim_Branch_Liquidity'[Available_Cash_GBP])
+VAR Rolling7DayVolume = 
+    CALCULATE(
+        AVERAGEX('Dim_Date', [Total Revenue GBP]),
+        DATESINPERIOD('Dim_Date'[Date], LASTDATE('Dim_Date'[Date]), -7, DAY)
+    )
+RETURN
+    IF(
+        CurrentCashReserve < Rolling7DayVolume,
+        "⚠️ CRITICAL LIQUIDITY BUFFER LOW",
+        "✅ STABLE"
+    )
